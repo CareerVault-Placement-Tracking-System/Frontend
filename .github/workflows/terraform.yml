@@ -6,10 +6,6 @@ on:
       - 'terraform/**'
   workflow_dispatch:
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
   plan:
     name: Terraform Plan
@@ -63,10 +59,10 @@ jobs:
           path: ./terraform/plan.txt
 
   apply:
-    name: Terraform Apply (Manual Approval)
+    name: Terraform Apply (Requires Approval)
     needs: plan
     runs-on: ubuntu-latest
-    environment: production  # requires manual approval
+    environment: production  # manual approval required
 
     steps:
       - name: Checkout Code
