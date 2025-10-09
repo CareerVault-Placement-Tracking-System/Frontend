@@ -1,0 +1,46 @@
+name: Terraform CI/CD - CAREERVAULT Infrastructure
+
+on:
+  push:
+    paths:
+      - 'terraform/**'   # Only trigger if files inside terraform folder change
+  workflow_dispatch:     # Allows manual run
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      # 1️⃣ Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2️⃣ Login to Azure using Service Principal
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 3️⃣ Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.7.5'  # Or your preferred version
+
+      # 4️⃣ Terraform Init
+      - name: Terraform Init
+        run: terraform init -chdir=terraform \
+          -backend-config="resource_group_name=rg-terraform" \
+          -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+          -backend-config="container_name=tfstate" \
+          -backend-config="key=infrastructure.tfstate"
+
+      # 5️⃣ Terraform Plan
+      - name: Terraform Plan
+        run: terraform plan -chdir=terraform -out=tfplan
+
+      # 6️⃣ Terraform Apply
+      - name: Terraform Apply
+        run: terraform apply -chdir=terraform -auto-approve tfplan
