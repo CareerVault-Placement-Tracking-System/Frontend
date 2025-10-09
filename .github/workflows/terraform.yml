@@ -1,66 +1,121 @@
-name: Terraform CI/CD - CAREERVAULT
+name: Terraform CI/CD - CAREERVAULT Infrastructure
 
 on:
   push:
     paths:
-      - 'terraform/**'
-  workflow_dispatch:
+      - 'terraform/**'          # Trigger only if terraform files change
+  workflow_dispatch:           # Allow manual trigger from GitHub UI
 
 jobs:
-  terraform:
-    name: Terraform Plan & Apply
+  terraform-plan:
+    name: Terraform Plan
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
+      # Checkout repository
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2️⃣ Azure Login
+      # Login to Azure using Service Principal
       - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
-      # 3️⃣ Setup Terraform CLI
+      # Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: '1.6.6'
 
-      # 4️⃣ Initialize Terraform
+      # Terraform Init
       - name: Terraform Init
         working-directory: ./terraform
         run: |
           terraform init -input=false \
             -backend-config="resource_group_name=rg-terraform" \
-            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="storage_account_name=tfstatecareervault01" \
             -backend-config="container_name=tfstate" \
-            -backend-config="key=infrastructure.tfstate"
+            -backend-config="key=terraform.tfstate"
 
-      # 5️⃣ Format Check
+      # Terraform Format check
       - name: Terraform Format Check
         working-directory: ./terraform
         run: terraform fmt -check
 
-      # 6️⃣ Validate
+      # Terraform Validate
       - name: Terraform Validate
         working-directory: ./terraform
         run: terraform validate
 
-      # 7️⃣ Plan
+      # Terraform Plan
       - name: Terraform Plan
         working-directory: ./terraform
-        run: terraform plan -out=tfplan
+        run: |
+          terraform plan -out=tfplan
+          terraform show -no-color tfplan > plan.txt
 
-      # 8️⃣ Apply automatically
+      # Upload plan for approval / apply
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: ./terraform/plan.txt
+
+  terraform-apply:
+    name: Terraform Apply (Requires Approval)
+    needs: terraform-plan
+    runs-on: ubuntu-latest
+    environment: production # Requires manual approval in GitHub UI
+
+    steps:
+      # Checkout repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Download plan artifact
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ./terraform
+
+      # Login to Azure
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      # Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.6.6'
+
+      # Terraform Init
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: |
+          terraform init -input=false \
+            -backend-config="resource_group_name=rg-terraform" \
+            -backend-config="storage_account_name=tfstatecareervault01" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=terraform.tfstate"
+
+      # Terraform Apply
       - name: Terraform Apply
         working-directory: ./terraform
-        run: terraform apply -auto-approve ./tfplan
+        run: terraform apply -auto-approve tfplan | tee terraform_apply.log
 
-      # 9️⃣ Optional: Upload Apply Logs
+      # Upload apply logs
       - name: Upload Apply Logs
         uses: actions/upload-artifact@v4
         with:
           name: terraform-apply-logs
-          path: ./terraform/terraform_apply.log || true
+          path: ./terraform/terraform_apply.log
