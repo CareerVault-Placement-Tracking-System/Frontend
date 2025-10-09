@@ -7,8 +7,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,21 +25,13 @@ jobs:
           npm install
           npm run build --if-present
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+      - name: Azure Login using Service Principal
+        uses: azure/login@v2
         with:
-          name: react-build
-          path: ./my-app/build
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: react-build
-          path: ./my-app/build
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_5C764ED0A0D0472CAF383A84C88CA888 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_090FDCF8BAAF47878EB40F705AF8D966 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BF8E25864AD645F587CE91E085FDDD0E }}
+          auth-type: service-principal
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -46,4 +39,3 @@ jobs:
           app-name: 'CAREERVAULT'
           slot-name: 'Production'
           package: ./my-app/build
-         
