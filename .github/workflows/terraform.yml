@@ -3,36 +3,36 @@ name: Terraform CI/CD - CAREERVAULT Infrastructure
 on:
   push:
     paths:
-      - 'terraform/**'          # Trigger only if terraform files change
-  workflow_dispatch:           # Allow manual trigger from GitHub UI
+      - 'terraform/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  terraform-plan:
+  plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout repository
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Login to Azure using Service Principal
       - name: Azure Login
         uses: azure/login@v2
         with:
-          auth-type: 'service-principal'
+          auth-type: 'SERVICE_PRINCIPAL'
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
-      # Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: '1.6.6'
 
-      # Terraform Init
       - name: Terraform Init
         working-directory: ./terraform
         run: |
@@ -42,64 +42,56 @@ jobs:
             -backend-config="container_name=tfstate" \
             -backend-config="key=terraform.tfstate"
 
-      # Terraform Format check
       - name: Terraform Format Check
         working-directory: ./terraform
         run: terraform fmt -check
 
-      # Terraform Validate
       - name: Terraform Validate
         working-directory: ./terraform
         run: terraform validate
 
-      # Terraform Plan
       - name: Terraform Plan
         working-directory: ./terraform
         run: |
           terraform plan -out=tfplan
           terraform show -no-color tfplan > plan.txt
 
-      # Upload plan for approval / apply
-      - name: Upload Plan Artifact
+      - name: Upload Plan Output
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
           path: ./terraform/plan.txt
 
-  terraform-apply:
-    name: Terraform Apply (Requires Approval)
-    needs: terraform-plan
+  apply:
+    name: Terraform Apply (Manual Approval)
+    needs: plan
     runs-on: ubuntu-latest
-    environment: production # Requires manual approval in GitHub UI
+    environment: production  # requires manual approval
 
     steps:
-      # Checkout repository
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Download plan artifact
       - name: Download Plan Artifact
         uses: actions/download-artifact@v4
         with:
           name: tfplan
           path: ./terraform
 
-      # Login to Azure
       - name: Azure Login
         uses: azure/login@v2
         with:
+          auth-type: 'SERVICE_PRINCIPAL'
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
-      # Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: '1.6.6'
 
-      # Terraform Init
       - name: Terraform Init
         working-directory: ./terraform
         run: |
@@ -109,12 +101,10 @@ jobs:
             -backend-config="container_name=tfstate" \
             -backend-config="key=terraform.tfstate"
 
-      # Terraform Apply
       - name: Terraform Apply
         working-directory: ./terraform
         run: terraform apply -auto-approve tfplan | tee terraform_apply.log
 
-      # Upload apply logs
       - name: Upload Apply Logs
         uses: actions/upload-artifact@v4
         with:
