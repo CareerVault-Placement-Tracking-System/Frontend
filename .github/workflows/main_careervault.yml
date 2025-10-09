@@ -58,4 +58,4 @@ jobs:
         with:
           app-name: 'CAREERVAULT'
           slot-name: 'Production'
-          package: ./node-app   # <-- Points to the artifact folder
+          package: ./my-app/build
