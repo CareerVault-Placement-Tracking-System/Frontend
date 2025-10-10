@@ -14,12 +14,27 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
 
+    env:
+      # OIDC Authentication for Terraform provider & backend
+      ARM_USE_OIDC: true
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Terraform variables
+      TF_VAR_client_id: ${{ secrets.AZURE_CLIENT_ID }}
+      TF_VAR_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+      TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_location: "southindia"
+      TF_VAR_resource_group_name: "careervault-rg"
+      TF_VAR_app_name_prefix: "careervault"
+
     steps:
       # 🔹 Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 🔹 Azure Login using OIDC
+      # 🔹 Azure Login using OIDC (needed for azurerm provider)
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -36,11 +51,6 @@ jobs:
       # 🔹 Terraform Init
       - name: Terraform Init
         working-directory: ./terraform
-        env:
-          ARM_USE_OIDC: true
-          TF_VAR_client_id: ${{ secrets.AZURE_CLIENT_ID }}
-          TF_VAR_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
-          TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           terraform init \
             -backend-config="resource_group_name=rg-terraform" \
@@ -56,29 +66,15 @@ jobs:
       # 🔹 Terraform Plan
       - name: Terraform Plan
         working-directory: ./terraform
-        env:
-          ARM_USE_OIDC: true
-          TF_VAR_client_id: ${{ secrets.AZURE_CLIENT_ID }}
-          TF_VAR_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
-          TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: terraform plan -input=false
 
       # 🔹 Terraform Apply (only on main branch)
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
         working-directory: ./terraform
-        env:
-          ARM_USE_OIDC: true
-          TF_VAR_client_id: ${{ secrets.AZURE_CLIENT_ID }}
-          TF_VAR_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
-          TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: terraform apply -auto-approve -input=false
 
       # 🔹 Terraform Output
       - name: Terraform Output
         working-directory: ./terraform
-        env:
-          TF_VAR_client_id: ${{ secrets.AZURE_CLIENT_ID }}
-          TF_VAR_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
-          TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: terraform output
