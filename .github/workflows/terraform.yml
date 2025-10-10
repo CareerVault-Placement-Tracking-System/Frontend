@@ -18,7 +18,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 🔹 Login to Azure
+      # 🔹 Azure Login using OIDC
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -73,3 +73,8 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: terraform apply -auto-approve -input=false
+
+      # 🔹 Terraform Output
+      - name: Terraform Output
+        working-directory: ./terraform
+        run: terraform output
