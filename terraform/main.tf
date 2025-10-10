@@ -11,22 +11,18 @@ terraform {
 
 provider "azurerm" {
   features {}
-
- 
   use_oidc = true
-
-  
   skip_provider_registration = true
+  subscription_id = var.subscription_id
+  tenant_id       = var.tenant_id
+  client_id       = var.client_id
 }
 
-
-# Create Resource Group
 resource "azurerm_resource_group" "rg" {
   name     = var.resource_group_name
   location = var.location
 }
 
-# Create App Service Plan
 resource "azurerm_service_plan" "plan" {
   name                = "${var.app_name_prefix}-plan"
   location            = azurerm_resource_group.rg.location
@@ -35,12 +31,10 @@ resource "azurerm_service_plan" "plan" {
   sku_name            = "B1"
 }
 
-# Generate Random Suffix for Unique Web App Name
 resource "random_id" "suffix" {
   byte_length = 3
 }
 
-# Create Web App
 resource "azurerm_linux_web_app" "app" {
   name                = "${var.app_name_prefix}-${random_id.suffix.hex}"
   location            = azurerm_resource_group.rg.location
@@ -57,10 +51,6 @@ resource "azurerm_linux_web_app" "app" {
     "WEBSITE_RUN_FROM_PACKAGE" = "1"
   }
 }
-
-# --------------------------
-# ✅ Terraform Outputs
-# --------------------------
 
 output "webapp_name" {
   description = "The name of the deployed Web App"
