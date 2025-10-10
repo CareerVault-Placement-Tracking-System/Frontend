@@ -17,9 +17,10 @@ provider "azurerm" {
   tenant_id       = var.tenant_id
   client_id       = var.client_id
 
-  # Correct usage: comma-separated string
-  resource_provider_registrations = "Microsoft.Web,Microsoft.Resources,Microsoft.ContainerService,Microsoft.Network,Microsoft.OperationalInsights"
+  # Recommended replacement for skip_provider_registration
+  resource_provider_registrations = "all"
 }
+
 
 
 # --------------------------
