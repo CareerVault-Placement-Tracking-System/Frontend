@@ -12,18 +12,13 @@ terraform {
 provider "azurerm" {
   features {}
 
-  # Use environment variables provided by GitHub Actions (recommended)
-  # Do NOT hardcode sensitive values like subscription_id or tenant_id
-  # Terraform will automatically read from:
-  # ARM_CLIENT_ID, ARM_CLIENT_SECRET / OIDC, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID
+ 
+  use_oidc = true
 
+  
   skip_provider_registration = true
-  use_oidc = false # set to true if using federated (OIDC) GitHub auth
 }
 
-# --------------------------
-# ✅ Resource Definitions
-# --------------------------
 
 # Create Resource Group
 resource "azurerm_resource_group" "rg" {
