@@ -34,7 +34,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 🔹 Azure Login using OIDC (needed for azurerm provider)
+      # 🔹 Azure Login using OIDC
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -74,7 +74,22 @@ jobs:
         working-directory: ./terraform
         run: terraform apply -auto-approve -input=false
 
-      # 🔹 Terraform Output
+      # 🔹 Terraform Output (get web app name)
       - name: Terraform Output
+        id: tf_output
         working-directory: ./terraform
-        run: terraform output
+        run: echo "webapp_name=$(terraform output -raw webapp_name)" >> $GITHUB_ENV
+
+      # 🔹 Build React App
+      - name: Build React App
+        working-directory: ./my-app
+        run: |
+          npm install
+          npm run build
+
+      # 🔹 Deploy React App to Azure Web App
+      - name: Deploy React App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.webapp_name }}
+          package: ./frontend/build
