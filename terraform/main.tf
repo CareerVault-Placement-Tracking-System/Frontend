@@ -11,9 +11,19 @@ terraform {
 
 provider "azurerm" {
   features {}
-  subscription_id = "23869751-d252-45cc-86de-6ea2ce32b6af"
-  tenant_id       = "6f6eee5a-fd1e-4a3f-8877-36874519e0a6"
+
+  # Use environment variables provided by GitHub Actions (recommended)
+  # Do NOT hardcode sensitive values like subscription_id or tenant_id
+  # Terraform will automatically read from:
+  # ARM_CLIENT_ID, ARM_CLIENT_SECRET / OIDC, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID
+
+  skip_provider_registration = true
+  use_oidc = false # set to true if using federated (OIDC) GitHub auth
 }
+
+# --------------------------
+# ✅ Resource Definitions
+# --------------------------
 
 # Create Resource Group
 resource "azurerm_resource_group" "rg" {
@@ -21,17 +31,16 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
 }
 
-# Create Service Plan (replaces deprecated App Service Plan)
+# Create App Service Plan
 resource "azurerm_service_plan" "plan" {
   name                = "${var.app_name_prefix}-plan"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   os_type             = "Linux"
-
-  sku_name = "B1"
+  sku_name            = "B1"
 }
 
-# Random suffix for unique app name
+# Generate Random Suffix for Unique Web App Name
 resource "random_id" "suffix" {
   byte_length = 3
 }
@@ -52,4 +61,18 @@ resource "azurerm_linux_web_app" "app" {
   app_settings = {
     "WEBSITE_RUN_FROM_PACKAGE" = "1"
   }
+}
+
+# --------------------------
+# ✅ Terraform Outputs
+# --------------------------
+
+output "webapp_name" {
+  description = "The name of the deployed Web App"
+  value       = azurerm_linux_web_app.app.name
+}
+
+output "webapp_url" {
+  description = "The URL of the deployed Web App"
+  value       = "https://${azurerm_linux_web_app.app.default_hostname}"
 }
