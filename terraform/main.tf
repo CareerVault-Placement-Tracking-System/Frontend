@@ -12,20 +12,15 @@ terraform {
 provider "azurerm" {
   features {}
 
-  use_oidc = true
+  use_oidc       = true
   subscription_id = var.subscription_id
   tenant_id       = var.tenant_id
   client_id       = var.client_id
 
-  # Replace deprecated skip_provider_registration with recommended property
-  resource_provider_registrations = [
-    "Microsoft.Web",
-    "Microsoft.Resources",
-    "Microsoft.ContainerService",
-    "Microsoft.Network",
-    "Microsoft.OperationalInsights"
-  ]
+  # Correct usage: comma-separated string
+  resource_provider_registrations = "Microsoft.Web,Microsoft.Resources,Microsoft.ContainerService,Microsoft.Network,Microsoft.OperationalInsights"
 }
+
 
 # --------------------------
 # Resource Group
